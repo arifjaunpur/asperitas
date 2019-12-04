@@ -1,8 +1,33 @@
-sudo apt-get update -y && sudo apt-get upgrade -y && sudo apt-get dist-upgrade -y
-wget -qO - https://www.mongodb.org/static/pgp/server-4.2.asc | sudo apt-key add -
-echo "deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-4.2.list
-sudo apt-get update -y && sudo apt-get install -y mongodb-org git nginx
-sudo systemctl enable mongod && sudo systemctl start mongod
+#!/bin/bash
+if [ -n "$(command -v apt-get)" ]
+then
+	apt-get update -y
+	wget -qO - https://www.mongodb.org/static/pgp/server-4.2.asc | sudo apt-key add -
+	echo "deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-4.2.list
+	apt-get update -y && apt-get install -y mongodb-org git nginx
+	export NGINX_VHOST=/etc/nginx/sites-enabled/default
+elif [ -n "$(command -v yum)" ]
+then
+	yum update -y
+	cat > /etc/yum.repos.d/mongodb-org-4.2.repo << EOF
+		[mongodb-org-4.2]
+		name=MongoDB Repository
+		baseurl=https://repo.mongodb.org/yum/redhat/\$releasever/mongodb-org/4.2/x86_64/
+		gpgcheck=1
+		enabled=1
+		gpgkey=https://www.mongodb.org/static/pgp/server-4.2.asc
+	EOF
+	cat > /etc/yum.repos.d/nginx.repo << EOF
+		[nginx]
+		name=nginx repo
+		baseurl=http://nginx.org/packages/mainline/centos/7/$basearch/
+		gpgcheck=0
+		enabled=1
+	EOF
+	yum install -y mongodb-org git nginx
+	export NGINX_VHOST=/etc/nginx/conf.d/reddit.conf
+fi
+systemctl enable mongod && systemctl start mongod
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.1/install.sh | bash
 export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" # This loads nvm
@@ -21,7 +46,7 @@ pm2 startup
 pm2 save
 sudo service nginx stop
 rm -rf /etc/nginx/sites-enabled/default
-cat > /etc/nginx/sites-enabled/default << EOF
+cat $NGINX_VHOST > /etc/nginx/sites-enabled/default << EOF
 server {
         listen 80 default_server;
         listen [::]:80 default_server;
