@@ -5,7 +5,7 @@ then
 	wget -qO - https://www.mongodb.org/static/pgp/server-4.2.asc | sudo apt-key add -
 	echo "deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-4.2.list
 	apt-get update -y && apt-get install -y mongodb-org git nginx
-	export NGINX_VHOST=/etc/nginx/sites-enabled/default
+	NGINX_VHOST=/etc/nginx/sites-enabled/default
 elif [ -n "$(command -v yum)" ]
 then
 	yum update -y
@@ -16,16 +16,16 @@ then
 		gpgcheck=1
 		enabled=1
 		gpgkey=https://www.mongodb.org/static/pgp/server-4.2.asc
-	EOF
+EOF
 	cat > /etc/yum.repos.d/nginx.repo << EOF
 		[nginx]
 		name=nginx repo
 		baseurl=http://nginx.org/packages/mainline/centos/7/$basearch/
 		gpgcheck=0
 		enabled=1
-	EOF
+EOF
 	yum install -y mongodb-org git nginx
-	export NGINX_VHOST=/etc/nginx/conf.d/reddit.conf
+	NGINX_VHOST=/etc/nginx/conf.d/reddit.conf
 fi
 systemctl enable mongod && systemctl start mongod
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.1/install.sh | bash
@@ -46,7 +46,7 @@ pm2 startup
 pm2 save
 sudo service nginx stop
 rm -rf /etc/nginx/sites-enabled/default
-cat $NGINX_VHOST > /etc/nginx/sites-enabled/default << EOF
+cat > $NGINX_VHOST << EOF
 server {
         listen 80 default_server;
         listen [::]:80 default_server;
