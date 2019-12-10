@@ -9,23 +9,24 @@ then
 elif [ -n "$(command -v yum)" ]
 then
 	yum update -y
-	cat > /etc/yum.repos.d/mongodb-org-4.2.repo << EOF
-		[mongodb-org-4.2]
-		name=MongoDB Repository
-		baseurl=https://repo.mongodb.org/yum/redhat/\$releasever/mongodb-org/4.2/x86_64/
-		gpgcheck=1
-		enabled=1
-		gpgkey=https://www.mongodb.org/static/pgp/server-4.2.asc
+cat > /etc/yum.repos.d/mongodb-org-4.2.repo << EOF
+[mongodb-org-4.2]
+name=MongoDB Repository
+baseurl=https://repo.mongodb.org/yum/redhat/\$releasever/mongodb-org/4.2/x86_64/
+gpgcheck=1
+enabled=1
+gpgkey=https://www.mongodb.org/static/pgp/server-4.2.asc
 EOF
-	cat > /etc/yum.repos.d/nginx.repo << EOF
-		[nginx]
-		name=nginx repo
-		baseurl=http://nginx.org/packages/mainline/centos/7/$basearch/
-		gpgcheck=0
-		enabled=1
+cat > /etc/yum.repos.d/nginx.repo << EOF
+[nginx]
+name=nginx repo
+baseurl=http://nginx.org/packages/mainline/centos/7/$basearch/
+gpgcheck=0
+enabled=1
 EOF
-	yum install -y mongodb-org git nginx
-	NGINX_VHOST=/etc/nginx/conf.d/reddit.conf
+yum install -y mongodb-org git nginx
+NGINX_VHOST=/etc/nginx/conf.d/default.conf
+systemctl enable nginx && systemctl start nginx	
 fi
 systemctl enable mongod && systemctl start mongod
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.1/install.sh | bash
@@ -40,12 +41,19 @@ cd asperitas/server && npm i
 cd ../client && npm i
 export NODE_ENV=production
 npm run build
-rm -rf /var/www/html && mv build /var/www/html
+if [[ ! -e '/var/www' ]]
+then
+    mkdir /var/www
+elif [[ -e '/var/www/html' ]]
+then
+    rm -rf /var/www/html
+fi
+mv build /var/www/html
 cd ../server && pm2 start index.js --name api
 pm2 startup
 pm2 save
 sudo service nginx stop
-rm -rf /etc/nginx/sites-enabled/default
+rm -rf $NGINX_VHOST
 cat > $NGINX_VHOST << EOF
 server {
         listen 80 default_server;
